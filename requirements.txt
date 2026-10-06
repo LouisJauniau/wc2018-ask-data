@@ -1,0 +1,4 @@
+psycopg2-binary>=2.9
+anthropic>=1.11
+openai>=3.24
+pytest>=8.0

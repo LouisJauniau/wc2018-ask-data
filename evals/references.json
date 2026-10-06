@@ -1,0 +1,716 @@
+{
+ "nb_matchs": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    64
+   ]
+  ],
+  "empreinte": "bce136bd9295b0c5"
+ },
+ "buts_total": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    169
+   ]
+  ],
+  "empreinte": "4051de8133c75301"
+ },
+ "nb_csc": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    12
+   ]
+  ],
+  "empreinte": "7cb2a31de44c7bd4"
+ },
+ "buts_france": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    14
+   ]
+  ],
+  "empreinte": "c7f9e41d0bda9552"
+ },
+ "matchs_croatie": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    7
+   ]
+  ],
+  "empreinte": "725181cd8b8d70a5"
+ },
+ "tirs_finale": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    23
+   ]
+  ],
+  "empreinte": "4dc4d4fee2e4defc"
+ },
+ "penalties_jeu": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    29
+   ]
+  ],
+  "empreinte": "c8593c0d836fb3ad"
+ },
+ "penalties_transformes": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    22
+   ]
+  ],
+  "empreinte": "9f720290ee7f001f"
+ },
+ "nb_seances_tab": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    4
+   ]
+  ],
+  "empreinte": "aaab5ec3d23bc0c0"
+ },
+ "buts_tete": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    32
+   ]
+  ],
+  "empreinte": "bec30a7d724b8bb0"
+ },
+ "buts_coup_franc": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    6
+   ]
+  ],
+  "empreinte": "6c4d286db5652699"
+ },
+ "fautes_uruguay": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    75
+   ]
+  ],
+  "empreinte": "d6c9f8605d581b02"
+ },
+ "passes_dec_eden_hazard": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    2
+   ]
+  ],
+  "empreinte": "49aa6bd344a342d6"
+ },
+ "nb_remplacements": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    382
+   ]
+  ],
+  "empreinte": "eb4aaf0ee3f9e6b2"
+ },
+ "buts_prolongation": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    3
+   ]
+  ],
+  "empreinte": "4b0110a43bff5e33"
+ },
+ "buts_temps_additionnel": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    19
+   ]
+  ],
+  "empreinte": "31ec289dc14fdbc9"
+ },
+ "sans_victoire_groupes": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    6
+   ]
+  ],
+  "empreinte": "ffeac7d872b3afcd"
+ },
+ "buteurs_distincts": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    110
+   ]
+  ],
+  "empreinte": "58dff269638306d1"
+ },
+ "titulaires_france": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    18
+   ]
+  ],
+  "empreinte": "f566de46f6bf404f"
+ },
+ "passes_modric": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    430
+   ]
+  ],
+  "empreinte": "61055e48419b3152"
+ },
+ "tirs_mbappe": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    8
+   ]
+  ],
+  "empreinte": "4df5550ace02c8dc"
+ },
+ "centres_angleterre": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    96
+   ]
+  ],
+  "empreinte": "a101b279aaa7bb9a"
+ },
+ "passes_profondeur": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    42
+   ]
+  ],
+  "empreinte": "2ccb5f184313e339"
+ },
+ "tirs_croatie": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    114
+   ]
+  ],
+  "empreinte": "132deb6797634412"
+ },
+ "tirs_hors_surface": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Croatia",
+    54
+   ]
+  ],
+  "empreinte": "38dce82ca3b7d540"
+ },
+ "meilleur_buteur": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Harry Kane",
+    6
+   ]
+  ],
+  "empreinte": "815374008b7ce844"
+ },
+ "passes_reussies_joueur": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Sergio Ramos García",
+    469
+   ]
+  ],
+  "empreinte": "1026d3b349322d70"
+ },
+ "meilleur_taux_passes": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Spain",
+    0.8938961779806047
+   ]
+  ],
+  "empreinte": "b162495ec7eaafdb"
+ },
+ "equipe_plus_xg": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Belgium",
+    12.7244262895
+   ]
+  ],
+  "empreinte": "84b75fb38e920249"
+ },
+ "but_xg_min": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Aleksandar Kolarov",
+    0.009479726
+   ]
+  ],
+  "empreinte": "50e08309c19f4030"
+ },
+ "dribbles_reussis": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Francisco Román Alarcón Suárez",
+    30
+   ]
+  ],
+  "empreinte": "58ffee2bf4e056f9"
+ },
+ "fautes_par_match": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "South Korea",
+    21.333333333333332
+   ]
+  ],
+  "empreinte": "8e7dcce5391d45b6"
+ },
+ "match_plus_buts": {
+  "n_lignes": 3,
+  "apercu": [
+   [
+    7554,
+    "England",
+    "Panama",
+    7
+   ],
+   [
+    7580,
+    "France",
+    "Argentina",
+    7
+   ],
+   [
+    7552,
+    "Belgium",
+    "Tunisia",
+    7
+   ]
+  ],
+  "empreinte": "c93caf49de2cdb91"
+ },
+ "plus_encaisse": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Panama",
+    11
+   ]
+  ],
+  "empreinte": "730f81bff02975e2"
+ },
+ "dernier_tiers_proportion": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Spain",
+    0.8067226890756303
+   ]
+  ],
+  "empreinte": "8e5e44fcef9d4273"
+ },
+ "tirs_cadres_joueur": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Neymar da Silva Santos Junior",
+    13
+   ]
+  ],
+  "empreinte": "6262032934217dfc"
+ },
+ "pays_plus_buteurs": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Belgium",
+    10
+   ]
+  ],
+  "empreinte": "c7754070b4e7b2f3"
+ },
+ "arbitre_plus_matchs": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Néstor Fabián Pitana",
+    5
+   ]
+  ],
+  "empreinte": "21a716e72d5aff93"
+ },
+ "but_plus_rapide": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Mathias Jørgensen Jatta",
+    57
+   ]
+  ],
+  "empreinte": "d1e9df799a894f44"
+ },
+ "tirs_concedes": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Belgium",
+    107
+   ]
+  ],
+  "empreinte": "bace1181a26752c5"
+ },
+ "corners_equipe": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Brazil",
+    41
+   ]
+  ],
+  "empreinte": "01a868bc60fa87ea"
+ },
+ "classement_xg_top5": {
+  "n_lignes": 5,
+  "apercu": [
+   [
+    "Neymar da Silva Santos Junior",
+    4.178492526
+   ],
+   [
+    "Harry Kane",
+    4.027905531
+   ],
+   [
+    "Antoine Griezmann",
+    3.556915921
+   ]
+  ],
+  "empreinte": "1ecbd5fec89eae75"
+ },
+ "taux_passes_espagne": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    0.8938961779806047
+   ]
+  ],
+  "empreinte": "152c5b5f0c2b4ad4"
+ },
+ "tirs_par_match": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    26.046875
+   ]
+  ],
+  "empreinte": "35f5553fe525dc63"
+ },
+ "duree_possession": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    21.08106169296987
+   ]
+  ],
+  "empreinte": "ae690d9900971cd5"
+ },
+ "part_buts_premiere_periode": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    0.38461538461538464
+   ]
+  ],
+  "empreinte": "cda3695e08f19b0e"
+ },
+ "taux_cadres_france": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    0.35365853658536583
+   ]
+  ],
+  "empreinte": "5462ac49d1795d7a"
+ },
+ "possessions_tir_belgique": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    95
+   ]
+  ],
+  "empreinte": "ebe31f83f84862d6"
+ },
+ "joueurs_expulses": {
+  "n_lignes": 4,
+  "apercu": [
+   [
+    "Carlos Alberto Sánchez Moreno"
+   ],
+   [
+    "Igor Smolnikov"
+   ],
+   [
+    "Jérôme Boateng"
+   ]
+  ],
+  "empreinte": "e8a68d1230bf1645"
+ },
+ "stade_finale": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Stadion Luzhniki"
+   ]
+  ],
+  "empreinte": "cc74617348f72232"
+ },
+ "vainqueur": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "France"
+   ]
+  ],
+  "empreinte": "01b4e6b61ca57417"
+ },
+ "vainqueurs_tab": {
+  "n_lignes": 3,
+  "apercu": [
+   [
+    "Croatia",
+    2
+   ],
+   [
+    "England",
+    1
+   ],
+   [
+    "Russia",
+    1
+   ]
+  ],
+  "empreinte": "f0b3b8eb888f3080"
+ },
+ "cartons_jaunes#0": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    205
+   ]
+  ],
+  "empreinte": "f9828c414b1612bd"
+ },
+ "cartons_jaunes#1": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    207
+   ]
+  ],
+  "empreinte": "02f6498ca7d26410"
+ },
+ "victoires_russie#0": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    2
+   ]
+  ],
+  "empreinte": "0c8da5fc0cb26343"
+ },
+ "victoires_russie#1": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    3
+   ]
+  ],
+  "empreinte": "d33d97207d3a6afa"
+ },
+ "matchs_nuls#0": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    13
+   ]
+  ],
+  "empreinte": "8a8cd1c2fdddad94"
+ },
+ "matchs_nuls#1": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    9
+   ]
+  ],
+  "empreinte": "986160c872d25220"
+ },
+ "matchs_nuls#2": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    14
+   ]
+  ],
+  "empreinte": "b673f822a5535fe3"
+ },
+ "passes_dec_hazard#0": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    2
+   ]
+  ],
+  "empreinte": "49aa6bd344a342d6"
+ },
+ "passes_dec_hazard#1": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    0
+   ]
+  ],
+  "empreinte": "640de277bfc527ae"
+ },
+ "passes_dec_hazard#2": {
+  "n_lignes": 2,
+  "apercu": [
+   [
+    "Eden Hazard",
+    2
+   ],
+   [
+    "Thorgan Hazard",
+    0
+   ]
+  ],
+  "empreinte": "db95db4ede47641a"
+ },
+ "possession_dominante#0": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Croatia",
+    16533
+   ]
+  ],
+  "empreinte": "e9d88281c310287e"
+ },
+ "possession_dominante#1": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Spain",
+    0.7156365824392302
+   ]
+  ],
+  "empreinte": "853d025cd4085b9b"
+ },
+ "possession_dominante#2": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Spain",
+    0.7387352169651695
+   ]
+  ],
+  "empreinte": "9448e50a308ca415"
+ },
+ "meilleure_defense#0": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Denmark",
+    0.5
+   ]
+  ],
+  "empreinte": "4c47234e34a82ac7"
+ },
+ "meilleure_defense#1": {
+  "n_lignes": 3,
+  "apercu": [
+   [
+    "Iran",
+    2
+   ],
+   [
+    "Peru",
+    2
+   ],
+   [
+    "Denmark",
+    2
+   ]
+  ],
+  "empreinte": "9be109976846a2a4"
+ },
+ "meilleure_defense#2": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Uruguay",
+    0.47050370082
+   ]
+  ],
+  "empreinte": "b8c81f64488888e8"
+ },
+ "meilleur_passeur#0": {
+  "n_lignes": 14,
+  "apercu": [
+   [
+    "Youri Tielemans",
+    2
+   ],
+   [
+    "Kevin De Bruyne",
+    2
+   ],
+   [
+    "Thomas Meunier",
+    2
+   ]
+  ],
+  "empreinte": "6378f452729bd117"
+ },
+ "meilleur_passeur#1": {
+  "n_lignes": 1,
+  "apercu": [
+   [
+    "Sergio Ramos García",
+    469
+   ]
+  ],
+  "empreinte": "2f4063aa1b552e34"
+ }
+}

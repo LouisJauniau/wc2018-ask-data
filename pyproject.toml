@@ -1,0 +1,13 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# Les prompts contiennent des lignes d'exemple JSON qu'on ne coupe pas.
+"askdata/prompt.py" = ["E501"]

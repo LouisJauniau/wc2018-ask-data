@@ -1,0 +1,1248 @@
+# Jeu d'evaluation : questions en langage naturel sur la base wc2018.
+#
+# Chaque question porte une requete de reference ecrite a la main. Le
+# resultat de l'agent est compare au resultat de cette requete, pas a son
+# texte : deux SQL differents qui renvoient la meme reponse sont tous deux
+# justes.
+#
+# Champs :
+#   id           identifiant stable, sert de cle dans les traces
+#   question     telle qu'un utilisateur la poserait
+#   categorie    comptage | classement | ratio | liste | ambigue | hors_perimetre
+#   split        dev (sert a regler le prompt) | test (lu une fois, a la fin)
+#   pieges       ce que la question met a l'epreuve, voir PIEGES.md
+#   forme        ensemble  lignes comparees sans ordre
+#                ordonne   lignes comparees dans l'ordre
+#                premier   les N premieres lignes de l'agent doivent etre les
+#                          N lignes de reference (N > 1 en cas d'egalite)
+#   cles         colonnes du resultat de reference que l'agent doit
+#                retrouver. Une liste de listes donne des alternatives.
+#   sql          la reference
+#   sql_verif    seconde ecriture independante, doit donner le meme resultat
+#
+# Questions ambigues : pas de sql, une liste d'interpretations, chacune avec
+# son sql. Une reponse qui correspond a l'une d'elles est acceptable, mais le
+# comportement attendu est de signaler l'ambiguite.
+#
+# Questions hors perimetre : la base ne contient pas la reponse. Le
+# comportement attendu est de le dire, pas de produire un chiffre.
+#
+# Convention generale, ecrite aussi dans le dictionnaire de donnees : sauf
+# mention contraire, une statistique de jeu exclut la seance de tirs au but
+# (period = 5), comme le font les statistiques officielles.
+
+
+# ---------------------------------------------------------------------------
+# comptages
+# ---------------------------------------------------------------------------
+
+[[question]]
+id = "nb_matchs"
+question = "Combien de matchs ont été disputés pendant la Coupe du monde 2018 ?"
+categorie = "comptage"
+split = "dev"
+pieges = []
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_matchs FROM sb.matches
+'''
+
+[[question]]
+id = "buts_total"
+question = "Combien de buts ont été marqués pendant le tournoi ?"
+categorie = "comptage"
+split = "test"
+pieges = ["buts_par_le_score", "csc", "seance_tab"]
+forme = "ensemble"
+sql = '''
+SELECT sum(home_score + away_score) AS n_buts FROM sb.matches
+'''
+sql_verif = '''
+SELECT count(*) AS n_buts
+FROM sb.events e
+LEFT JOIN sb.shots s USING (event_id)
+WHERE e.period < 5
+  AND (s.outcome = 'Goal' OR e.type = 'Own Goal Against')
+'''
+
+[[question]]
+id = "nb_csc"
+question = "Combien de buts contre son camp ont été inscrits ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["csc"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_csc FROM sb.events WHERE type = 'Own Goal Against'
+'''
+sql_verif = '''
+SELECT count(*) AS n_csc FROM sb.events WHERE type = 'Own Goal For'
+'''
+
+[[question]]
+id = "buts_france"
+question = "Combien de buts la France a-t-elle marqués ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["buts_par_le_score", "csc", "domicile_exterieur", "noms_en_anglais"]
+forme = "ensemble"
+sql = '''
+SELECT sum(CASE WHEN m.home_team_id = t.team_id THEN m.home_score
+                ELSE m.away_score END) AS n_buts
+FROM sb.matches m
+JOIN sb.teams t ON t.team_id IN (m.home_team_id, m.away_team_id)
+WHERE t.team_name = 'France'
+'''
+sql_verif = '''
+SELECT count(*) AS n_buts
+FROM sb.events e
+LEFT JOIN sb.shots s USING (event_id)
+JOIN sb.teams t ON t.team_id = e.team_id
+WHERE t.team_name = 'France' AND e.period < 5
+  AND (s.outcome = 'Goal' OR e.type = 'Own Goal For')
+'''
+
+[[question]]
+id = "matchs_croatie"
+question = "Combien de matchs la Croatie a-t-elle joués ?"
+categorie = "comptage"
+split = "test"
+pieges = ["domicile_exterieur", "noms_en_anglais"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_matchs
+FROM sb.matches m
+JOIN sb.teams t ON t.team_id IN (m.home_team_id, m.away_team_id)
+WHERE t.team_name = 'Croatia'
+'''
+
+[[question]]
+id = "tirs_finale"
+question = "Combien de tirs ont été tentés lors de la finale ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["libelle_stage"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_tirs
+FROM sb.shots s
+JOIN sb.events e USING (event_id)
+JOIN sb.matches m USING (match_id)
+WHERE m.stage = 'Final' AND e.period < 5
+'''
+
+[[question]]
+id = "penalties_jeu"
+question = "Combien de penalties ont été tirés pendant les matchs, hors séances de tirs au but ?"
+categorie = "comptage"
+split = "test"
+pieges = ["seance_tab"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_penalties
+FROM sb.shots s JOIN sb.events e USING (event_id)
+WHERE s.shot_type = 'Penalty' AND e.period < 5
+'''
+
+[[question]]
+id = "penalties_transformes"
+question = "Combien de penalties ont été transformés en cours de match ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["seance_tab"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_penalties_marques
+FROM sb.shots s JOIN sb.events e USING (event_id)
+WHERE s.shot_type = 'Penalty' AND s.outcome = 'Goal' AND e.period < 5
+'''
+
+[[question]]
+id = "nb_seances_tab"
+question = "Combien de matchs se sont décidés aux tirs au but ?"
+categorie = "comptage"
+split = "test"
+pieges = ["seance_tab"]
+forme = "ensemble"
+sql = '''
+SELECT count(DISTINCT match_id) AS n_matchs FROM sb.events WHERE period = 5
+'''
+
+[[question]]
+id = "buts_tete"
+question = "Combien de buts ont été marqués de la tête ?"
+categorie = "comptage"
+split = "test"
+pieges = ["seance_tab"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_buts
+FROM sb.shots s JOIN sb.events e USING (event_id)
+WHERE s.outcome = 'Goal' AND s.body_part = 'Head' AND e.period < 5
+'''
+
+[[question]]
+id = "buts_coup_franc"
+question = "Combien de buts ont été marqués directement sur coup franc ?"
+categorie = "comptage"
+split = "test"
+pieges = []
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_buts
+FROM sb.shots s
+WHERE s.shot_type = 'Free Kick' AND s.outcome = 'Goal'
+'''
+
+[[question]]
+id = "fautes_uruguay"
+question = "Combien de fautes l'Uruguay a-t-il commises ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["faute_commise_ou_subie", "noms_en_anglais"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_fautes
+FROM sb.events e JOIN sb.teams t ON t.team_id = e.team_id
+WHERE e.type = 'Foul Committed' AND t.team_name = 'Uruguay'
+'''
+
+[[question]]
+id = "passes_dec_eden_hazard"
+question = "Combien de passes décisives Eden Hazard a-t-il délivrées ?"
+categorie = "comptage"
+split = "dev"
+pieges = []
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_passes_decisives
+FROM sb.passes p
+JOIN sb.events e USING (event_id)
+JOIN sb.players pl USING (player_id)
+WHERE p.goal_assist AND pl.player_name = 'Eden Hazard'
+'''
+
+[[question]]
+id = "nb_remplacements"
+question = "Combien de remplacements ont été effectués au total ?"
+categorie = "comptage"
+split = "dev"
+pieges = []
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_remplacements FROM sb.events WHERE type = 'Substitution'
+'''
+
+[[question]]
+id = "buts_prolongation"
+question = "Combien de buts ont été marqués pendant les prolongations ?"
+categorie = "comptage"
+split = "test"
+pieges = ["periode_ou_minute", "csc"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_buts
+FROM sb.events e LEFT JOIN sb.shots s USING (event_id)
+WHERE e.period IN (3, 4)
+  AND (s.outcome = 'Goal' OR e.type = 'Own Goal Against')
+'''
+
+[[question]]
+id = "buts_temps_additionnel"
+question = "Combien de buts ont été marqués dans le temps additionnel de la seconde période ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["periode_ou_minute", "csc"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_buts
+FROM sb.events e LEFT JOIN sb.shots s USING (event_id)
+WHERE e.period = 2 AND e.minute >= 90
+  AND (s.outcome = 'Goal' OR e.type = 'Own Goal Against')
+'''
+
+[[question]]
+id = "sans_victoire_groupes"
+question = "Combien d'équipes n'ont gagné aucun de leurs matchs de phase de groupes ?"
+categorie = "comptage"
+split = "test"
+pieges = ["domicile_exterieur"]
+forme = "ensemble"
+sql = '''
+WITH resultats AS (
+    SELECT home_team_id AS team_id, home_score > away_score AS victoire
+    FROM sb.matches WHERE stage = 'Group Stage'
+    UNION ALL
+    SELECT away_team_id, away_score > home_score
+    FROM sb.matches WHERE stage = 'Group Stage'
+)
+SELECT count(*) AS n_equipes
+FROM (SELECT team_id FROM resultats GROUP BY team_id
+      HAVING NOT bool_or(victoire)) sans
+'''
+
+[[question]]
+id = "buteurs_distincts"
+question = "Combien de joueurs différents ont marqué au moins un but ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["seance_tab"]
+forme = "ensemble"
+sql = '''
+SELECT count(DISTINCT e.player_id) AS n_buteurs
+FROM sb.shots s JOIN sb.events e USING (event_id)
+WHERE s.outcome = 'Goal' AND e.period < 5
+'''
+
+[[question]]
+id = "titulaires_france"
+question = "Combien de joueurs différents la France a-t-elle alignés dans un onze de départ ?"
+categorie = "comptage"
+split = "test"
+pieges = ["jsonb_tableau", "noms_en_anglais"]
+forme = "ensemble"
+sql = '''
+SELECT count(DISTINCT j -> 'player' ->> 'id') AS n_joueurs
+FROM sb.events e
+JOIN sb.teams t ON t.team_id = e.team_id,
+     jsonb_array_elements(e.details -> 'tactics' -> 'lineup') AS j
+WHERE e.type = 'Starting XI' AND t.team_name = 'France'
+'''
+
+[[question]]
+id = "passes_modric"
+question = "Combien de passes Luka Modric a-t-il réussies ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["accents", "passe_reussie_null"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_passes
+FROM sb.passes p
+JOIN sb.events e USING (event_id)
+JOIN sb.players pl USING (player_id)
+WHERE pl.player_name = 'Luka Modrić' AND p.outcome IS NULL
+'''
+
+[[question]]
+id = "tirs_mbappe"
+question = "Combien de tirs Kylian Mbappe a-t-il tentés ?"
+categorie = "comptage"
+split = "test"
+pieges = ["accents", "nom_complet"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_tirs
+FROM sb.shots s
+JOIN sb.events e USING (event_id)
+JOIN sb.players pl USING (player_id)
+WHERE pl.player_name = 'Kylian Mbappé Lottin' AND e.period < 5
+'''
+
+[[question]]
+id = "centres_angleterre"
+question = "Combien de centres l'Angleterre a-t-elle tentés ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["noms_en_anglais"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_centres
+FROM sb.passes p
+JOIN sb.events e USING (event_id)
+JOIN sb.teams t ON t.team_id = e.team_id
+WHERE p.is_cross AND t.team_name = 'England'
+'''
+
+[[question]]
+id = "passes_profondeur"
+question = "Combien de passes en profondeur ont été réussies pendant le tournoi ?"
+categorie = "comptage"
+split = "test"
+pieges = ["passe_reussie_null"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_passes
+FROM sb.passes p
+WHERE p.is_through_ball AND p.outcome IS NULL
+'''
+
+[[question]]
+id = "tirs_croatie"
+question = "Combien de tirs la Croatie a-t-elle tentés ?"
+categorie = "comptage"
+split = "dev"
+pieges = ["seance_tab", "noms_en_anglais"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_tirs
+FROM sb.shots s
+JOIN sb.events e USING (event_id)
+JOIN sb.teams t ON t.team_id = e.team_id
+WHERE t.team_name = 'Croatia' AND e.period < 5
+'''
+
+
+# ---------------------------------------------------------------------------
+# classements : "quelle equipe", "quel joueur"
+# ---------------------------------------------------------------------------
+#
+# Les references gardent toutes les lignes ex aequo au lieu d'un LIMIT 1 : un
+# LIMIT 1 sur une egalite renvoie une seule des reponses justes, choisie au
+# hasard du plan d'execution.
+
+[[question]]
+id = "tirs_hors_surface"
+question = "Quelle équipe a tenté le plus de tirs hors de la surface ?"
+categorie = "classement"
+split = "dev"
+pieges = ["geometrie_surface", "seance_tab"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH t AS (
+    SELECT tm.team_name AS equipe, count(*) AS n_tirs
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.teams tm ON tm.team_id = e.team_id
+    WHERE e.period < 5
+      AND NOT (e.loc_x >= 102 AND e.loc_y BETWEEN 18 AND 62)
+    GROUP BY tm.team_name
+)
+SELECT equipe, n_tirs FROM t WHERE n_tirs = (SELECT max(n_tirs) FROM t)
+'''
+
+[[question]]
+id = "meilleur_buteur"
+question = "Qui a terminé meilleur buteur du tournoi, et avec combien de buts ?"
+categorie = "classement"
+split = "test"
+pieges = ["seance_tab"]
+forme = "premier"
+cles = ["joueur", "n_buts"]
+sql = '''
+WITH b AS (
+    SELECT pl.player_name AS joueur, count(*) AS n_buts
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.players pl USING (player_id)
+    WHERE s.outcome = 'Goal' AND e.period < 5
+    GROUP BY pl.player_id, pl.player_name
+)
+SELECT joueur, n_buts FROM b WHERE n_buts = (SELECT max(n_buts) FROM b)
+'''
+
+[[question]]
+id = "passes_reussies_joueur"
+question = "Quel joueur a réussi le plus de passes ?"
+categorie = "classement"
+split = "test"
+pieges = ["passe_reussie_null"]
+forme = "premier"
+cles = ["joueur"]
+sql = '''
+WITH p AS (
+    SELECT pl.player_name AS joueur, count(*) AS n_passes
+    FROM sb.passes x
+    JOIN sb.events e USING (event_id)
+    JOIN sb.players pl USING (player_id)
+    WHERE x.outcome IS NULL
+    GROUP BY pl.player_id, pl.player_name
+)
+SELECT joueur, n_passes FROM p WHERE n_passes = (SELECT max(n_passes) FROM p)
+'''
+
+[[question]]
+id = "meilleur_taux_passes"
+question = "Quelle équipe a le meilleur taux de passes réussies ?"
+categorie = "classement"
+split = "test"
+pieges = ["passe_reussie_null", "ratio"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH r AS (
+    SELECT t.team_name AS equipe, avg((p.outcome IS NULL)::int) AS taux
+    FROM sb.passes p
+    JOIN sb.events e USING (event_id)
+    JOIN sb.teams t ON t.team_id = e.team_id
+    GROUP BY t.team_name
+)
+SELECT equipe, taux FROM r WHERE taux = (SELECT max(taux) FROM r)
+'''
+
+[[question]]
+id = "equipe_plus_xg"
+question = "Quelle équipe a cumulé le plus d'expected goals (xG) ?"
+categorie = "classement"
+split = "dev"
+pieges = ["seance_tab"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH x AS (
+    SELECT t.team_name AS equipe, sum(s.statsbomb_xg) AS xg
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.teams t ON t.team_id = e.team_id
+    WHERE e.period < 5
+    GROUP BY t.team_name
+)
+SELECT equipe, xg FROM x WHERE xg = (SELECT max(xg) FROM x)
+'''
+
+[[question]]
+id = "but_xg_min"
+question = "Quel joueur a marqué le but le plus improbable du tournoi, celui au plus faible xG ?"
+categorie = "classement"
+split = "test"
+pieges = []
+forme = "premier"
+cles = ["joueur"]
+sql = '''
+WITH b AS (
+    SELECT pl.player_name AS joueur, s.statsbomb_xg AS xg
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.players pl USING (player_id)
+    WHERE s.outcome = 'Goal' AND e.period < 5
+)
+SELECT joueur, xg FROM b WHERE xg = (SELECT min(xg) FROM b)
+'''
+
+[[question]]
+id = "dribbles_reussis"
+question = "Quel joueur a réussi le plus de dribbles ?"
+categorie = "classement"
+split = "dev"
+pieges = ["jsonb"]
+forme = "premier"
+cles = ["joueur"]
+sql = '''
+WITH d AS (
+    SELECT pl.player_name AS joueur, count(*) AS n_dribbles
+    FROM sb.events e JOIN sb.players pl USING (player_id)
+    WHERE e.type = 'Dribble'
+      AND e.details -> 'dribble' -> 'outcome' ->> 'name' = 'Complete'
+    GROUP BY pl.player_id, pl.player_name
+)
+SELECT joueur, n_dribbles FROM d WHERE n_dribbles = (SELECT max(n_dribbles) FROM d)
+'''
+
+[[question]]
+id = "fautes_par_match"
+question = "Quelle équipe a commis le plus de fautes par match ?"
+categorie = "classement"
+split = "test"
+pieges = ["normalisation_par_match", "faute_commise_ou_subie"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH f AS (
+    SELECT t.team_name AS equipe,
+           count(*)::numeric / count(DISTINCT e.match_id) AS fautes_par_match
+    FROM sb.events e JOIN sb.teams t ON t.team_id = e.team_id
+    WHERE e.type = 'Foul Committed'
+    GROUP BY t.team_name
+)
+SELECT equipe, fautes_par_match FROM f
+WHERE fautes_par_match = (SELECT max(fautes_par_match) FROM f)
+'''
+
+[[question]]
+id = "match_plus_buts"
+question = "Quel match a été le plus riche en buts ?"
+categorie = "classement"
+split = "dev"
+pieges = ["egalite"]
+forme = "premier"
+cles = [["match_id"], ["equipe_domicile", "equipe_exterieur"]]
+sql = '''
+SELECT m.match_id, h.team_name AS equipe_domicile, a.team_name AS equipe_exterieur,
+       m.home_score + m.away_score AS n_buts
+FROM sb.matches m
+JOIN sb.teams h ON h.team_id = m.home_team_id
+JOIN sb.teams a ON a.team_id = m.away_team_id
+WHERE m.home_score + m.away_score = (
+    SELECT max(home_score + away_score) FROM sb.matches)
+'''
+
+[[question]]
+id = "plus_encaisse"
+question = "Quelle équipe a encaissé le plus de buts ?"
+categorie = "classement"
+split = "test"
+pieges = ["domicile_exterieur", "buts_par_le_score"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH c AS (
+    SELECT team_id, sum(encaisses) AS n_buts_encaisses
+    FROM (SELECT home_team_id AS team_id, away_score AS encaisses FROM sb.matches
+          UNION ALL
+          SELECT away_team_id, home_score FROM sb.matches) x
+    GROUP BY team_id
+)
+SELECT t.team_name AS equipe, c.n_buts_encaisses
+FROM c JOIN sb.teams t USING (team_id)
+WHERE c.n_buts_encaisses = (SELECT max(n_buts_encaisses) FROM c)
+'''
+
+[[question]]
+id = "dernier_tiers_proportion"
+question = "Quelle équipe atteint le dernier tiers adverse sur la plus grande proportion de ses possessions ?"
+categorie = "classement"
+split = "dev"
+pieges = ["table_derivee", "ratio"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH r AS (
+    SELECT t.team_name AS equipe, avg(p.reached_final_third::int) AS proportion
+    FROM sb.possessions p JOIN sb.teams t USING (team_id)
+    GROUP BY t.team_name
+)
+SELECT equipe, proportion FROM r WHERE proportion = (SELECT max(proportion) FROM r)
+'''
+
+[[question]]
+id = "tirs_cadres_joueur"
+question = "Quel joueur a cadré le plus de tirs ?"
+categorie = "classement"
+split = "test"
+pieges = ["convention_cadre", "seance_tab"]
+forme = "premier"
+cles = ["joueur"]
+sql = '''
+WITH c AS (
+    SELECT pl.player_name AS joueur, count(*) AS n_cadres
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.players pl USING (player_id)
+    WHERE s.outcome IN ('Goal', 'Saved') AND e.period < 5
+    GROUP BY pl.player_id, pl.player_name
+)
+SELECT joueur, n_cadres FROM c WHERE n_cadres = (SELECT max(n_cadres) FROM c)
+'''
+
+[[question]]
+id = "pays_plus_buteurs"
+question = "Quelle équipe compte le plus de buteurs différents ?"
+categorie = "classement"
+split = "dev"
+pieges = ["seance_tab"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH b AS (
+    SELECT t.team_name AS equipe, count(DISTINCT e.player_id) AS n_buteurs
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.teams t ON t.team_id = e.team_id
+    WHERE s.outcome = 'Goal' AND e.period < 5
+    GROUP BY t.team_name
+)
+SELECT equipe, n_buteurs FROM b WHERE n_buteurs = (SELECT max(n_buteurs) FROM b)
+'''
+
+[[question]]
+id = "arbitre_plus_matchs"
+question = "Quel arbitre a dirigé le plus de matchs ?"
+categorie = "classement"
+split = "dev"
+pieges = []
+forme = "premier"
+cles = ["arbitre"]
+sql = '''
+WITH a AS (SELECT referee AS arbitre, count(*) AS n_matchs FROM sb.matches GROUP BY referee)
+SELECT arbitre, n_matchs FROM a WHERE n_matchs = (SELECT max(n_matchs) FROM a)
+'''
+
+[[question]]
+id = "but_plus_rapide"
+question = "Qui a marqué le but le plus rapide du tournoi, compté depuis le coup d'envoi ?"
+categorie = "classement"
+split = "dev"
+pieges = ["periode_ou_minute"]
+forme = "premier"
+cles = ["joueur"]
+sql = '''
+WITH b AS (
+    SELECT pl.player_name AS joueur, e.match_seconds
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.players pl USING (player_id)
+    WHERE s.outcome = 'Goal' AND e.period = 1
+)
+SELECT joueur, match_seconds FROM b WHERE match_seconds = (SELECT min(match_seconds) FROM b)
+'''
+
+[[question]]
+id = "tirs_concedes"
+question = "Quelle équipe a concédé le plus de tirs à ses adversaires ?"
+categorie = "classement"
+split = "test"
+pieges = ["adversaire", "seance_tab"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH c AS (
+    SELECT t.team_id, count(*) AS n_tirs_concedes
+    FROM sb.shots s
+    JOIN sb.events e USING (event_id)
+    JOIN sb.matches m USING (match_id)
+    JOIN sb.teams t ON t.team_id IN (m.home_team_id, m.away_team_id)
+                   AND t.team_id <> e.team_id
+    WHERE e.period < 5
+    GROUP BY t.team_id
+)
+SELECT t.team_name AS equipe, c.n_tirs_concedes
+FROM c JOIN sb.teams t USING (team_id)
+WHERE c.n_tirs_concedes = (SELECT max(n_tirs_concedes) FROM c)
+'''
+
+[[question]]
+id = "corners_equipe"
+question = "Quelle équipe a tiré le plus de corners ?"
+categorie = "classement"
+split = "dev"
+pieges = ["convention_corner"]
+forme = "premier"
+cles = ["equipe"]
+sql = '''
+WITH c AS (
+    SELECT t.team_name AS equipe, count(*) AS n_corners
+    FROM sb.passes p
+    JOIN sb.events e USING (event_id)
+    JOIN sb.teams t ON t.team_id = e.team_id
+    WHERE p.pass_type = 'Corner'
+    GROUP BY t.team_name
+)
+SELECT equipe, n_corners FROM c WHERE n_corners = (SELECT max(n_corners) FROM c)
+'''
+
+[[question]]
+id = "classement_xg_top5"
+question = "Donne les cinq joueurs avec le plus d'xG cumulé, du premier au cinquième."
+categorie = "classement"
+split = "test"
+pieges = ["seance_tab"]
+forme = "ordonne"
+cles = ["joueur"]
+sql = '''
+SELECT pl.player_name AS joueur, sum(s.statsbomb_xg) AS xg
+FROM sb.shots s
+JOIN sb.events e USING (event_id)
+JOIN sb.players pl USING (player_id)
+WHERE e.period < 5
+GROUP BY pl.player_id, pl.player_name
+ORDER BY xg DESC
+LIMIT 5
+'''
+
+
+# ---------------------------------------------------------------------------
+# ratios et moyennes
+# ---------------------------------------------------------------------------
+
+[[question]]
+id = "taux_passes_espagne"
+question = "Quel est le taux de passes réussies de l'Espagne ?"
+categorie = "ratio"
+split = "dev"
+pieges = ["passe_reussie_null", "noms_en_anglais", "ratio"]
+forme = "ensemble"
+echelle_pourcentage = true
+sql = '''
+SELECT avg((p.outcome IS NULL)::int) AS taux
+FROM sb.passes p
+JOIN sb.events e USING (event_id)
+JOIN sb.teams t ON t.team_id = e.team_id
+WHERE t.team_name = 'Spain'
+'''
+
+[[question]]
+id = "tirs_par_match"
+question = "Combien de tirs ont été tentés en moyenne par match ?"
+categorie = "ratio"
+split = "test"
+pieges = ["seance_tab"]
+forme = "ensemble"
+sql = '''
+SELECT (SELECT count(*) FROM sb.shots s JOIN sb.events e USING (event_id)
+        WHERE e.period < 5)::numeric
+     / (SELECT count(*) FROM sb.matches) AS tirs_par_match
+'''
+
+[[question]]
+id = "duree_possession"
+question = "Quelle est la durée moyenne d'une possession en secondes, hors séances de tirs au but ?"
+categorie = "ratio"
+split = "dev"
+pieges = ["table_derivee"]
+forme = "ensemble"
+sql = '''
+SELECT avg(duration_seconds) AS duree_moyenne FROM sb.possessions WHERE period < 5
+'''
+
+[[question]]
+id = "part_buts_premiere_periode"
+question = "Quelle part des buts a été marquée en première période ?"
+categorie = "ratio"
+split = "test"
+pieges = ["csc", "seance_tab", "ratio"]
+forme = "ensemble"
+echelle_pourcentage = true
+sql = '''
+SELECT avg((e.period = 1)::int) AS part
+FROM sb.events e LEFT JOIN sb.shots s USING (event_id)
+WHERE e.period < 5
+  AND (s.outcome = 'Goal' OR e.type = 'Own Goal Against')
+'''
+
+[[question]]
+id = "taux_cadres_france"
+question = "Quel pourcentage des tirs de la France étaient cadrés ?"
+categorie = "ratio"
+split = "dev"
+pieges = ["convention_cadre", "noms_en_anglais", "ratio"]
+forme = "ensemble"
+echelle_pourcentage = true
+sql = '''
+SELECT avg((s.outcome IN ('Goal', 'Saved'))::int) AS part_cadres
+FROM sb.shots s
+JOIN sb.events e USING (event_id)
+JOIN sb.teams t ON t.team_id = e.team_id
+WHERE t.team_name = 'France' AND e.period < 5
+'''
+
+[[question]]
+id = "possessions_tir_belgique"
+question = "Combien de possessions de la Belgique ont abouti à un tir ?"
+categorie = "comptage"
+split = "test"
+pieges = ["table_derivee", "noms_en_anglais"]
+forme = "ensemble"
+sql = '''
+SELECT count(*) AS n_possessions
+FROM sb.possessions p JOIN sb.teams t USING (team_id)
+WHERE t.team_name = 'Belgium' AND p.produced_shot
+'''
+
+
+# ---------------------------------------------------------------------------
+# listes
+# ---------------------------------------------------------------------------
+
+[[question]]
+id = "joueurs_expulses"
+question = "Quels joueurs ont été expulsés pendant le tournoi ?"
+categorie = "liste"
+split = "test"
+pieges = ["jsonb", "cartons_deux_types"]
+forme = "ensemble"
+cles = ["joueur"]
+sql = '''
+SELECT DISTINCT pl.player_name AS joueur
+FROM sb.events e JOIN sb.players pl USING (player_id)
+WHERE coalesce(e.details -> 'foul_committed' -> 'card' ->> 'name',
+               e.details -> 'bad_behaviour'  -> 'card' ->> 'name')
+      IN ('Red Card', 'Second Yellow')
+'''
+
+[[question]]
+id = "stade_finale"
+question = "Dans quel stade la finale s'est-elle jouée ?"
+categorie = "liste"
+split = "dev"
+pieges = ["libelle_stage"]
+forme = "ensemble"
+cles = ["stade"]
+sql = '''
+SELECT stadium AS stade FROM sb.matches WHERE stage = 'Final'
+'''
+
+[[question]]
+id = "vainqueur"
+question = "Quelle équipe a remporté la Coupe du monde ?"
+categorie = "liste"
+split = "test"
+pieges = ["domicile_exterieur", "libelle_stage"]
+forme = "ensemble"
+cles = ["equipe"]
+sql = '''
+SELECT t.team_name AS equipe
+FROM sb.matches m
+JOIN sb.teams t ON t.team_id = CASE WHEN m.home_score > m.away_score
+                                    THEN m.home_team_id ELSE m.away_team_id END
+WHERE m.stage = 'Final'
+'''
+
+[[question]]
+id = "vainqueurs_tab"
+question = "Quelles équipes ont remporté une séance de tirs au but, et combien chacune ?"
+categorie = "liste"
+split = "dev"
+pieges = ["seance_tab"]
+forme = "ensemble"
+cles = ["equipe", "n_seances_gagnees"]
+sql = '''
+WITH tab AS (
+    SELECT e.match_id, e.team_id, count(*) FILTER (WHERE s.outcome = 'Goal') AS reussis
+    FROM sb.shots s JOIN sb.events e USING (event_id)
+    WHERE e.period = 5
+    GROUP BY e.match_id, e.team_id
+),
+gagnants AS (
+    SELECT DISTINCT ON (match_id) match_id, team_id
+    FROM tab ORDER BY match_id, reussis DESC
+)
+SELECT t.team_name AS equipe, count(*) AS n_seances_gagnees
+FROM gagnants g JOIN sb.teams t USING (team_id)
+GROUP BY t.team_name
+'''
+
+
+# ---------------------------------------------------------------------------
+# questions ambigues
+# ---------------------------------------------------------------------------
+
+[[question]]
+id = "cartons_jaunes"
+question = "Combien de cartons jaunes ont été distribués ?"
+categorie = "ambigue"
+split = "dev"
+pieges = ["jsonb", "cartons_deux_types"]
+ambiguite = "Un second avertissement est-il un carton jaune ? StatsBomb le code 'Second Yellow', distinct de 'Yellow Card'."
+
+  [[question.interpretations]]
+  nom = "jaunes simples"
+  forme = "ensemble"
+  sql = '''
+  SELECT count(*) AS n_cartons
+  FROM sb.events
+  WHERE coalesce(details -> 'foul_committed' -> 'card' ->> 'name',
+                 details -> 'bad_behaviour'  -> 'card' ->> 'name') = 'Yellow Card'
+  '''
+
+  [[question.interpretations]]
+  nom = "jaunes et seconds jaunes"
+  forme = "ensemble"
+  sql = '''
+  SELECT count(*) AS n_cartons
+  FROM sb.events
+  WHERE coalesce(details -> 'foul_committed' -> 'card' ->> 'name',
+                 details -> 'bad_behaviour'  -> 'card' ->> 'name')
+        IN ('Yellow Card', 'Second Yellow')
+  '''
+
+[[question]]
+id = "victoires_russie"
+question = "Combien de matchs la Russie a-t-elle gagnés ?"
+categorie = "ambigue"
+split = "test"
+pieges = ["seance_tab", "domicile_exterieur"]
+ambiguite = "Le huitième contre l'Espagne finit 1-1 et se gagne aux tirs au but : victoire ou nul ?"
+
+  [[question.interpretations]]
+  nom = "au score"
+  forme = "ensemble"
+  sql = '''
+  SELECT count(*) AS n_victoires
+  FROM sb.matches m JOIN sb.teams t ON t.team_id IN (m.home_team_id, m.away_team_id)
+  WHERE t.team_name = 'Russia'
+    AND ((m.home_team_id = t.team_id AND m.home_score > m.away_score)
+      OR (m.away_team_id = t.team_id AND m.away_score > m.home_score))
+  '''
+
+  [[question.interpretations]]
+  nom = "tirs au but compris"
+  forme = "ensemble"
+  sql = '''
+  WITH tab AS (
+      SELECT e.match_id, e.team_id, count(*) FILTER (WHERE s.outcome = 'Goal') AS reussis
+      FROM sb.shots s JOIN sb.events e USING (event_id)
+      WHERE e.period = 5
+      GROUP BY e.match_id, e.team_id
+  ),
+  gagnant_tab AS (
+      SELECT DISTINCT ON (match_id) match_id, team_id FROM tab
+      ORDER BY match_id, reussis DESC
+  )
+  SELECT count(*) AS n_victoires
+  FROM sb.matches m
+  JOIN sb.teams t ON t.team_id IN (m.home_team_id, m.away_team_id)
+  LEFT JOIN gagnant_tab g ON g.match_id = m.match_id
+  WHERE t.team_name = 'Russia'
+    AND ((m.home_team_id = t.team_id AND m.home_score > m.away_score)
+      OR (m.away_team_id = t.team_id AND m.away_score > m.home_score)
+      OR g.team_id = t.team_id)
+  '''
+
+[[question]]
+id = "matchs_nuls"
+question = "Combien de matchs se sont terminés sur un match nul ?"
+categorie = "ambigue"
+split = "dev"
+pieges = ["seance_tab", "periode_ou_minute"]
+ambiguite = "Nul au score final (prolongation comprise), nul sans vainqueur du tout, ou nul à la fin du temps réglementaire ?"
+
+  [[question.interpretations]]
+  nom = "score final egal, tirs au but compris"
+  forme = "ensemble"
+  sql = '''
+  SELECT count(*) AS n_nuls FROM sb.matches WHERE home_score = away_score
+  '''
+
+  [[question.interpretations]]
+  nom = "sans vainqueur, hors tirs au but"
+  forme = "ensemble"
+  sql = '''
+  SELECT count(*) AS n_nuls
+  FROM sb.matches m
+  WHERE home_score = away_score
+    AND NOT EXISTS (SELECT 1 FROM sb.events e WHERE e.match_id = m.match_id AND e.period = 5)
+  '''
+
+  [[question.interpretations]]
+  nom = "egalite a la fin du temps reglementaire"
+  forme = "ensemble"
+  sql = '''
+  SELECT count(*) AS n_nuls
+  FROM sb.matches m
+  WHERE home_score = away_score
+     OR EXISTS (SELECT 1 FROM sb.events e WHERE e.match_id = m.match_id AND e.period = 3)
+  '''
+
+[[question]]
+id = "passes_dec_hazard"
+question = "Combien de passes décisives Hazard a-t-il délivrées ?"
+categorie = "ambigue"
+split = "test"
+pieges = ["homonymes"]
+ambiguite = "Deux joueurs belges s'appellent Hazard : Eden et Thorgan."
+
+  [[question.interpretations]]
+  nom = "Eden Hazard"
+  forme = "ensemble"
+  cles = ["n_passes_decisives"]
+  sql = '''
+  SELECT count(*) AS n_passes_decisives
+  FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.players pl USING (player_id)
+  WHERE p.goal_assist AND pl.player_name = 'Eden Hazard'
+  '''
+
+  [[question.interpretations]]
+  nom = "Thorgan Hazard"
+  forme = "ensemble"
+  cles = ["n_passes_decisives"]
+  sql = '''
+  SELECT count(*) AS n_passes_decisives
+  FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.players pl USING (player_id)
+  WHERE p.goal_assist AND pl.player_name = 'Thorgan Hazard'
+  '''
+
+  [[question.interpretations]]
+  nom = "les deux, separement"
+  forme = "ensemble"
+  cles = ["joueur", "n_passes_decisives"]
+  sql = '''
+  SELECT pl.player_name AS joueur, count(*) FILTER (WHERE p.goal_assist) AS n_passes_decisives
+  FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.players pl USING (player_id)
+  WHERE pl.player_name LIKE '%Hazard'
+  GROUP BY pl.player_name
+  '''
+
+[[question]]
+id = "possession_dominante"
+question = "Quelle équipe a eu le plus la possession du ballon ?"
+categorie = "ambigue"
+split = "dev"
+pieges = ["table_derivee"]
+ambiguite = "Total sur le tournoi ou moyenne par match ? Mesurée en temps, en nombre de possessions ou en passes ?"
+
+  [[question.interpretations]]
+  nom = "temps de possession cumule"
+  forme = "premier"
+  cles = ["equipe"]
+  sql = '''
+  WITH d AS (SELECT t.team_name AS equipe, sum(p.duration_seconds) AS secondes
+             FROM sb.possessions p JOIN sb.teams t USING (team_id) GROUP BY t.team_name)
+  SELECT equipe, secondes FROM d WHERE secondes = (SELECT max(secondes) FROM d)
+  '''
+
+  [[question.interpretations]]
+  nom = "part moyenne du temps de possession par match"
+  forme = "premier"
+  cles = ["equipe"]
+  sql = '''
+  WITH par_match AS (
+      SELECT match_id, team_id,
+             sum(duration_seconds)::numeric
+             / sum(sum(duration_seconds)) OVER (PARTITION BY match_id) AS part
+      FROM sb.possessions GROUP BY match_id, team_id
+  ),
+  moy AS (SELECT t.team_name AS equipe, avg(part) AS part_moyenne
+          FROM par_match JOIN sb.teams t USING (team_id) GROUP BY t.team_name)
+  SELECT equipe, part_moyenne FROM moy WHERE part_moyenne = (SELECT max(part_moyenne) FROM moy)
+  '''
+
+  [[question.interpretations]]
+  nom = "part moyenne des passes par match"
+  forme = "premier"
+  cles = ["equipe"]
+  sql = '''
+  WITH par_match AS (
+      SELECT e.match_id, e.team_id,
+             count(*)::numeric / sum(count(*)) OVER (PARTITION BY e.match_id) AS part
+      FROM sb.events e WHERE e.type = 'Pass' GROUP BY e.match_id, e.team_id
+  ),
+  moy AS (SELECT t.team_name AS equipe, avg(part) AS part_moyenne
+          FROM par_match JOIN sb.teams t USING (team_id) GROUP BY t.team_name)
+  SELECT equipe, part_moyenne FROM moy WHERE part_moyenne = (SELECT max(part_moyenne) FROM moy)
+  '''
+
+[[question]]
+id = "meilleure_defense"
+question = "Quelle équipe a eu la meilleure défense ?"
+categorie = "ambigue"
+split = "test"
+pieges = ["normalisation_par_match", "domicile_exterieur"]
+ambiguite = "Moins de buts encaissés au total favorise les équipes éliminées tôt ; par match, ou en xG concédés, la réponse change."
+
+  [[question.interpretations]]
+  nom = "buts encaisses par match"
+  forme = "premier"
+  cles = ["equipe"]
+  sql = '''
+  WITH c AS (
+      SELECT team_id, avg(encaisses) AS par_match
+      FROM (SELECT home_team_id AS team_id, away_score AS encaisses FROM sb.matches
+            UNION ALL SELECT away_team_id, home_score FROM sb.matches) x
+      GROUP BY team_id
+  )
+  SELECT t.team_name AS equipe, c.par_match FROM c JOIN sb.teams t USING (team_id)
+  WHERE c.par_match = (SELECT min(par_match) FROM c)
+  '''
+
+  [[question.interpretations]]
+  nom = "buts encaisses au total"
+  forme = "premier"
+  cles = ["equipe"]
+  sql = '''
+  WITH c AS (
+      SELECT team_id, sum(encaisses) AS total
+      FROM (SELECT home_team_id AS team_id, away_score AS encaisses FROM sb.matches
+            UNION ALL SELECT away_team_id, home_score FROM sb.matches) x
+      GROUP BY team_id
+  )
+  SELECT t.team_name AS equipe, c.total FROM c JOIN sb.teams t USING (team_id)
+  WHERE c.total = (SELECT min(total) FROM c)
+  '''
+
+  [[question.interpretations]]
+  nom = "xG concedes par match"
+  forme = "premier"
+  cles = ["equipe"]
+  sql = '''
+  WITH x AS (
+      SELECT t.team_id, sum(s.statsbomb_xg) / count(DISTINCT m.match_id) AS xg_par_match
+      FROM sb.matches m
+      JOIN sb.teams t ON t.team_id IN (m.home_team_id, m.away_team_id)
+      LEFT JOIN sb.events e ON e.match_id = m.match_id AND e.team_id <> t.team_id
+                           AND e.type = 'Shot' AND e.period < 5
+      LEFT JOIN sb.shots s USING (event_id)
+      GROUP BY t.team_id
+  )
+  SELECT t.team_name AS equipe, x.xg_par_match FROM x JOIN sb.teams t USING (team_id)
+  WHERE x.xg_par_match = (SELECT min(xg_par_match) FROM x)
+  '''
+
+[[question]]
+id = "meilleur_passeur"
+question = "Qui a été le meilleur passeur du tournoi ?"
+categorie = "ambigue"
+split = "dev"
+pieges = ["passe_reussie_null", "egalite"]
+ambiguite = "En français, « meilleur passeur » désigne d'ordinaire les passes décisives, mais peut s'entendre du volume de passes réussies."
+
+  [[question.interpretations]]
+  nom = "passes decisives"
+  forme = "premier"
+  cles = ["joueur"]
+  sql = '''
+  WITH a AS (
+      SELECT pl.player_name AS joueur, count(*) AS n
+      FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.players pl USING (player_id)
+      WHERE p.goal_assist GROUP BY pl.player_id, pl.player_name
+  )
+  SELECT joueur, n FROM a WHERE n = (SELECT max(n) FROM a)
+  '''
+
+  [[question.interpretations]]
+  nom = "passes reussies"
+  forme = "premier"
+  cles = ["joueur"]
+  sql = '''
+  WITH p AS (
+      SELECT pl.player_name AS joueur, count(*) AS n
+      FROM sb.passes x JOIN sb.events e USING (event_id) JOIN sb.players pl USING (player_id)
+      WHERE x.outcome IS NULL GROUP BY pl.player_id, pl.player_name
+  )
+  SELECT joueur, n FROM p WHERE n = (SELECT max(n) FROM p)
+  '''
+
+[[question]]
+id = "meilleur_joueur"
+question = "Qui a été le meilleur joueur du tournoi ?"
+categorie = "ambigue"
+split = "test"
+pieges = ["subjectif"]
+ambiguite = "Aucune colonne ne mesure « le meilleur ». Il faut choisir un critère, et le dire."
+
+
+# ---------------------------------------------------------------------------
+# hors perimetre : la base ne contient pas la reponse
+# ---------------------------------------------------------------------------
+
+[[question]]
+id = "affluence_finale"
+question = "Combien de spectateurs ont assisté à la finale ?"
+categorie = "hors_perimetre"
+split = "dev"
+pieges = []
+
+[[question]]
+id = "distance_parcourue"
+question = "Quel joueur a parcouru la plus grande distance pendant le tournoi ?"
+categorie = "hors_perimetre"
+split = "test"
+pieges = ["donnee_approchante"]
+
+[[question]]
+id = "age_buteurs"
+question = "Quel est l'âge moyen des buteurs du tournoi ?"
+categorie = "hors_perimetre"
+split = "dev"
+pieges = []
+
+[[question]]
+id = "club_kane"
+question = "Dans quel club jouait Harry Kane pendant la Coupe du monde ?"
+categorie = "hors_perimetre"
+split = "dev"
+pieges = []
+
+[[question]]
+id = "france_2022"
+question = "Combien de buts la France a-t-elle marqués à la Coupe du monde 2022 ?"
+categorie = "hors_perimetre"
+split = "test"
+pieges = ["donnee_approchante"]
+
+[[question]]
+id = "vitesse_tir"
+question = "Quelle a été la vitesse du tir le plus puissant du tournoi ?"
+categorie = "hors_perimetre"
+split = "test"
+pieges = ["donnee_approchante"]

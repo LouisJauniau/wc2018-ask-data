@@ -1,0 +1,40 @@
+# Arbitrages humains : verdicts du comparateur corriges a la main.
+#
+# Le comparateur juge des resultats selon des regles fixes (voir
+# askdata/comparaison.py). Quand une reponse juste tombe hors de ces regles,
+# on ne relache pas la regle pour tout le monde : on corrige ce verdict-la,
+# ici, avec sa justification.
+#
+# Un arbitrage vise une requete precise, identifiee par l'empreinte de son
+# texte (python -m askdata empreinte "<sql>"). Une autre requete sur la meme
+# question n'en beneficie pas. Le rapport donne l'exactitude avant et apres
+# arbitrage.
+#
+# Critere, le meme pour tous les arbitrages : le resultat de la requete doit
+# porter la reponse sans que l'utilisateur ait a la recalculer.
+#   - accepte : la reponse figure dans le resultat (une ligne de total), ou
+#     le resultat enumere exactement l'ensemble demande (la liste verifiee
+#     des six equipes, quand on demande combien il y en a) ;
+#   - refuse : le resultat donne les morceaux et laisse l'addition a faire
+#     (tirs par equipe sans total), meme si le texte de l'agent fait
+#     l'addition juste. On note la requete, pas la phrase.
+
+[[arbitrage]]
+question = "tirs_finale"
+sql_empreinte = "b00d6158c61f0ee8"
+verdict = "juste"
+raison = """La requete renvoie le detail par equipe (Croatie 15, France 8) et une
+ligne de total a 23, la bonne reponse. Le comparateur attend une seule
+ligne et la refuse pour cardinalite."""
+date = "2026-10-06"
+
+[[arbitrage]]
+question = "sans_victoire_groupes"
+sql_empreinte = "0986ac8b0afea530"
+verdict = "juste"
+raison = """La question demande un nombre, la requete renvoie la liste des equipes
+concernees. Verifie : ce sont exactement les six equipes sans victoire
+(Australie, Costa Rica, Egypte, Islande, Maroc, Panama), et la reponse donnee
+a l'utilisateur dit « six equipes ». Le comparateur refuse pour cardinalite
+(six lignes au lieu d'une)."""
+date = "2026-10-06"

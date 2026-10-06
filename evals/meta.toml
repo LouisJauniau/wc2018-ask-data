@@ -1,0 +1,173 @@
+# Meta-evaluation : on evalue le comparateur.
+#
+# Pour quelques questions du jeu, des requetes dont on connait le verdict :
+#   equivalentes  ecritures differentes de la bonne reponse, doivent passer ;
+#   fausses       erreurs typiques d'un modele, doivent echouer, avec le
+#                 diagnostic indique.
+#
+# Un comparateur trop strict compte faux des reponses justes ; trop
+# tolerant, il laisse passer des faux silencieux. Les deux se testent ici.
+
+[[cas]]
+question = "tirs_hors_surface"
+equivalentes = [
+  # LIMIT 1 sans egalite : juste.
+  '''SELECT t.team_name, count(*) FROM sb.shots s JOIN sb.events e USING (event_id)
+     JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE e.period < 5 AND NOT (e.loc_x >= 102 AND e.loc_y BETWEEN 18 AND 62)
+     GROUP BY 1 ORDER BY 2 DESC LIMIT 1''',
+  # Les cinq premiers, dans l'ordre : la premiere ligne repond.
+  '''SELECT count(*) AS n, t.team_name FROM sb.shots s JOIN sb.events e USING (event_id)
+     JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE e.period < 5 AND (e.loc_x < 102 OR e.loc_y < 18 OR e.loc_y > 62)
+     GROUP BY 2 ORDER BY 1 DESC LIMIT 5''',
+]
+fausses = [
+  # NOT oublie : les tirs DANS la surface.
+  { diagnostic = "entites", sql = '''SELECT t.team_name, count(*) FROM sb.shots s
+     JOIN sb.events e USING (event_id) JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE e.loc_x >= 102 AND e.loc_y BETWEEN 18 AND 62
+     GROUP BY 1 ORDER BY 2 DESC LIMIT 1''' },
+  # L'identifiant au lieu du nom.
+  { diagnostic = "entites", sql = '''SELECT e.team_id, count(*) FROM sb.shots s
+     JOIN sb.events e USING (event_id)
+     WHERE e.period < 5 AND NOT (e.loc_x >= 102 AND e.loc_y BETWEEN 18 AND 62)
+     GROUP BY 1 ORDER BY 2 DESC LIMIT 1''' },
+]
+
+[[cas]]
+question = "meilleur_buteur"
+equivalentes = [
+  '''SELECT count(*) AS buts, p.player_name AS nom FROM sb.shots s JOIN sb.events e USING (event_id)
+     JOIN sb.players p USING (player_id) WHERE s.outcome = 'Goal' AND e.period <> 5
+     GROUP BY p.player_name ORDER BY buts DESC LIMIT 3''',
+]
+fausses = [
+  # Seance de tirs au but comptee : Kane a 7.
+  { diagnostic = "valeurs", sql = '''SELECT p.player_name, count(*) FROM sb.shots s
+     JOIN sb.events e USING (event_id) JOIN sb.players p USING (player_id)
+     WHERE s.outcome = 'Goal' GROUP BY 1 ORDER BY 2 DESC LIMIT 1''' },
+]
+
+[[cas]]
+question = "buts_france"
+equivalentes = [
+  '''SELECT (SELECT coalesce(sum(home_score), 0) FROM sb.matches m JOIN sb.teams t ON t.team_id = m.home_team_id WHERE t.team_name = 'France')
+          + (SELECT coalesce(sum(away_score), 0) FROM sb.matches m JOIN sb.teams t ON t.team_id = m.away_team_id WHERE t.team_name = 'France') AS total''',
+  # Avec le nom de l'equipe en plus.
+  '''SELECT 'France' AS equipe, 14 AS buts''',
+]
+fausses = [
+  # Tirs marques seulement : les csc profitant a la France manquent.
+  { diagnostic = "valeurs", sql = '''SELECT count(*) FROM sb.shots s JOIN sb.events e USING (event_id)
+     JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE t.team_name = 'France' AND s.outcome = 'Goal' AND e.period < 5''' },
+  # Matchs a domicile seulement.
+  { diagnostic = "valeurs", sql = '''SELECT sum(home_score) FROM sb.matches m
+     JOIN sb.teams t ON t.team_id = m.home_team_id WHERE t.team_name = 'France' ''' },
+  # Nom en francais : aucune ligne ne correspond, sum() renvoie NULL.
+  { diagnostic = "valeurs", sql = '''SELECT sum(home_score) FROM sb.matches m
+     JOIN sb.teams t ON t.team_id = m.home_team_id WHERE t.team_name = 'Allemagne' ''' },
+]
+
+[[cas]]
+question = "match_plus_buts"
+equivalentes = [
+  '''SELECT match_id FROM sb.matches WHERE home_score + away_score = 7''',
+  # Exterieur avant domicile, et une colonne de score en plus.
+  '''SELECT a.team_name AS ext, h.team_name AS dom, m.home_score, m.away_score
+     FROM sb.matches m JOIN sb.teams h ON h.team_id = m.home_team_id
+     JOIN sb.teams a ON a.team_id = m.away_team_id
+     ORDER BY m.home_score + m.away_score DESC LIMIT 3''',
+]
+fausses = [
+  # LIMIT 1 sur une egalite a trois.
+  { diagnostic = "egalite_tronquee", sql = '''SELECT h.team_name, a.team_name, m.home_score + m.away_score
+     FROM sb.matches m JOIN sb.teams h ON h.team_id = m.home_team_id
+     JOIN sb.teams a ON a.team_id = m.away_team_id ORDER BY 3 DESC LIMIT 1''' },
+]
+
+[[cas]]
+question = "taux_passes_espagne"
+equivalentes = [
+  # Pourcentage arrondi a une decimale.
+  '''SELECT round(100.0 * count(*) FILTER (WHERE p.outcome IS NULL) / count(*), 1) AS pct
+     FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE t.team_name = 'Spain' ''',
+  '''SELECT round(avg(CASE WHEN p.outcome IS NULL THEN 1.0 ELSE 0 END), 4)
+     FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE t.team_name = 'Spain' ''',
+]
+fausses = [
+  # outcome = 'Complete' n'existe pas : 0 %.
+  { diagnostic = "valeurs", sql = '''SELECT avg((p.outcome = 'Complete')::int)
+     FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE t.team_name = 'Spain' ''' },
+  # Seul 'Incomplete' compte comme echec.
+  { diagnostic = "valeurs", sql = '''SELECT avg((p.outcome IS DISTINCT FROM 'Incomplete')::int)
+     FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE t.team_name = 'Spain' ''' },
+  # Arrondi a l'entier : 89 pour 89,39. Refuse par choix, voir comparaison.py.
+  { diagnostic = "valeurs", sql = '''SELECT round(100.0 * avg((p.outcome IS NULL)::int))
+     FROM sb.passes p JOIN sb.events e USING (event_id) JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE t.team_name = 'Spain' ''' },
+]
+
+[[cas]]
+question = "tirs_par_match"
+equivalentes = [
+  '''SELECT count(*)::float / 64 FROM sb.shots s JOIN sb.events e USING (event_id) WHERE e.period IN (1, 2, 3, 4)''',
+]
+fausses = [
+  # Division entiere : 26 au lieu de 26,05.
+  { diagnostic = "valeurs", sql = '''SELECT count(*) / 64 FROM sb.shots s JOIN sb.events e USING (event_id) WHERE e.period < 5''' },
+  # Seances de tirs au but comptees.
+  { diagnostic = "valeurs", sql = '''SELECT count(*)::numeric / 64 FROM sb.shots''' },
+]
+
+[[cas]]
+question = "joueurs_expulses"
+equivalentes = [
+  '''SELECT pl.player_name, t.team_name FROM sb.events e JOIN sb.players pl USING (player_id)
+     JOIN sb.teams t ON t.team_id = e.team_id
+     WHERE e.details -> 'foul_committed' -> 'card' ->> 'name' IN ('Red Card', 'Second Yellow')
+        OR e.details -> 'bad_behaviour' -> 'card' ->> 'name' IN ('Red Card', 'Second Yellow')''',
+]
+fausses = [
+  # Rouges directs seulement.
+  { diagnostic = "cardinalite", sql = '''SELECT pl.player_name FROM sb.events e JOIN sb.players pl USING (player_id)
+     WHERE e.details -> 'foul_committed' -> 'card' ->> 'name' = 'Red Card' ''' },
+]
+
+[[cas]]
+question = "classement_xg_top5"
+equivalentes = [
+  '''SELECT pl.player_name, round(sum(s.statsbomb_xg), 2) FROM sb.shots s JOIN sb.events e USING (event_id)
+     JOIN sb.players pl USING (player_id) WHERE e.period < 5
+     GROUP BY pl.player_name ORDER BY 2 DESC LIMIT 5''',
+]
+fausses = [
+  # Les bons joueurs, rendus par ordre alphabetique.
+  { diagnostic = "ordre", sql = '''SELECT * FROM (SELECT pl.player_name AS j FROM sb.shots s JOIN sb.events e USING (event_id)
+     JOIN sb.players pl USING (player_id) WHERE e.period < 5
+     GROUP BY pl.player_name ORDER BY sum(s.statsbomb_xg) DESC LIMIT 5) x ORDER BY j''' },
+]
+
+[[cas]]
+question = "duree_possession"
+equivalentes = []
+fausses = [
+  # Possessions de la seance de tirs au but comprises : 21,00 au lieu de 21,08.
+  { diagnostic = "valeurs", sql = '''SELECT avg(duration_seconds) FROM sb.possessions''' },
+]
+
+[[cas]]
+question = "vainqueurs_tab"
+equivalentes = [
+  '''SELECT 2 AS n, 'Croatia' AS e UNION ALL SELECT 1, 'Russia' UNION ALL SELECT 1, 'England' ''',
+]
+fausses = [
+  # Equipes ayant dispute une seance, pas gagnantes.
+  { diagnostic = "cardinalite", sql = '''SELECT t.team_name, count(DISTINCT e.match_id) FROM sb.events e
+     JOIN sb.teams t ON t.team_id = e.team_id WHERE e.period = 5 AND e.type = 'Shot' GROUP BY 1''' },
+]

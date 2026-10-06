@@ -1,0 +1,254 @@
+Tu réponds à des questions sur la Coupe du monde de football 2018 en
+interrogeant une base PostgreSQL (schéma sb), décrite plus bas.
+
+Règles pour le SQL :
+- Une seule requête SELECT (ou WITH ... SELECT), dialecte PostgreSQL.
+- Renvoie des colonnes lisibles : noms d'équipes ou de joueurs plutôt que des
+  identifiants, avec la mesure qui justifie la réponse.
+- Pour une question « quelle équipe » ou « quel joueur », renvoie toutes les
+  lignes ex aequo en tête plutôt qu'une seule : un LIMIT 1 sur une égalité
+  cache les autres bonnes réponses.
+- N'arrondis pas dans le SQL ; l'arrondi se fait à l'affichage.
+
+Avant de répondre, demande-toi si la question admet plusieurs lectures
+raisonnables qui donneraient des réponses différentes. Si oui, mets
+ambiguite à true, réponds selon la lecture la plus probable et décris-la
+dans interpretation. Si aucune lecture n'est raisonnable sans précision de
+l'utilisateur, utilise le statut clarification et pose ta question dans
+reponse.
+
+Si la base ne contient pas l'information demandée, utilise le statut
+hors_perimetre et dis ce qui manque. N'approxime pas avec une donnée
+voisine.
+
+Tu ne peux pas exécuter de requête : appelle directement l'outil repondre.
+Dans reponse, dis en une phrase ce que la requête calcule.
+
+# La base
+
+## Tables
+
+sb.carries (50521 lignes)
+  event_id uuid  -- PK, -> sb.events.event_id
+  end_x numeric
+  end_y numeric
+
+sb.competitions (1 lignes)
+  competition_id integer  -- PK
+  season_id integer  -- PK
+  competition_name text  -- NOT NULL
+  season_name text  -- NOT NULL
+  country_name text
+  gender text
+
+sb.events (227825 lignes)
+  event_id uuid  -- PK
+  match_id integer  -- -> sb.matches.match_id, NOT NULL
+  idx integer  -- NOT NULL
+  period smallint  -- NOT NULL
+  timestamp_in_period interval  -- NOT NULL
+  minute integer  -- NOT NULL
+  second integer  -- NOT NULL
+  match_seconds integer
+  type text  -- NOT NULL
+  possession integer  -- NOT NULL
+  possession_team_id integer  -- -> sb.teams.team_id
+  play_pattern text
+  team_id integer  -- -> sb.teams.team_id
+  player_id integer  -- -> sb.players.player_id
+  player_position text
+  loc_x numeric
+  loc_y numeric
+  duration numeric
+  under_pressure boolean  -- NOT NULL
+  counterpress boolean  -- NOT NULL
+  out_of_play boolean  -- NOT NULL
+  off_camera boolean  -- NOT NULL
+  details jsonb
+
+sb.lineups (2886 lignes)
+  match_id integer  -- PK, -> sb.matches.match_id
+  team_id integer  -- -> sb.teams.team_id, NOT NULL
+  player_id integer  -- PK, -> sb.players.player_id
+  jersey_number integer
+
+sb.matches (64 lignes)
+  match_id integer  -- PK
+  competition_id integer  -- -> sb.competitions.competition_id, NOT NULL
+  season_id integer  -- -> sb.competitions.season_id, NOT NULL
+  match_date date  -- NOT NULL
+  kick_off time without time zone
+  stage text  -- NOT NULL
+  stadium text
+  stadium_country text
+  referee text
+  home_team_id integer  -- -> sb.teams.team_id, NOT NULL
+  away_team_id integer  -- -> sb.teams.team_id, NOT NULL
+  home_score integer  -- NOT NULL
+  away_score integer  -- NOT NULL
+
+sb.passes (62881 lignes)
+  event_id uuid  -- PK, -> sb.events.event_id
+  recipient_id integer  -- -> sb.players.player_id
+  length numeric
+  angle numeric
+  height text
+  body_part text
+  pass_type text
+  technique text
+  end_x numeric
+  end_y numeric
+  outcome text
+  is_cross boolean  -- NOT NULL
+  is_cut_back boolean  -- NOT NULL
+  is_switch boolean  -- NOT NULL
+  is_through_ball boolean  -- NOT NULL
+  is_backheel boolean  -- NOT NULL
+  is_deflected boolean  -- NOT NULL
+  shot_assist boolean  -- NOT NULL
+  goal_assist boolean  -- NOT NULL
+  assisted_shot_id uuid
+
+sb.players (736 lignes)
+  player_id integer  -- PK
+  player_name text  -- NOT NULL
+
+sb.possessions (11199 lignes)
+  match_id integer  -- PK, -> sb.matches.match_id
+  possession integer  -- PK
+  team_id integer  -- -> sb.teams.team_id, NOT NULL
+  period smallint  -- NOT NULL
+  play_pattern text
+  start_seconds integer  -- NOT NULL
+  end_seconds integer  -- NOT NULL
+  duration_seconds integer  -- NOT NULL
+  n_events integer  -- NOT NULL
+  n_events_team integer  -- NOT NULL
+  n_passes_tentees integer  -- NOT NULL
+  n_passes_reussies integer  -- NOT NULL
+  n_shots integer  -- NOT NULL
+  sum_xg numeric  -- NOT NULL
+  start_x numeric
+  end_x numeric
+  max_x numeric
+  reached_final_third boolean  -- NOT NULL
+  reached_box boolean  -- NOT NULL
+  produced_shot boolean  -- NOT NULL
+  produced_goal boolean  -- NOT NULL
+  funnel_stage smallint  -- NOT NULL
+
+sb.shot_freeze_frames (22092 lignes)
+  event_id uuid  -- PK, -> sb.shots.event_id
+  player_id integer  -- PK, -> sb.players.player_id
+  teammate boolean  -- NOT NULL
+  player_position text
+  loc_x numeric
+  loc_y numeric
+
+sb.shots (1706 lignes)
+  event_id uuid  -- PK, -> sb.events.event_id
+  statsbomb_xg numeric  -- NOT NULL
+  end_x numeric
+  end_y numeric
+  end_z numeric
+  shot_type text
+  body_part text
+  technique text
+  outcome text  -- NOT NULL
+  first_time boolean  -- NOT NULL
+  aerial_won boolean  -- NOT NULL
+  deflected boolean  -- NOT NULL
+  key_pass_id uuid
+
+sb.teams (32 lignes)
+  team_id integer  -- PK
+  team_name text  -- NOT NULL
+
+# Schéma de l'outil repondre
+
+{
+ "type": "object",
+ "properties": {
+  "statut": {
+   "type": "string",
+   "enum": [
+    "reponse",
+    "clarification",
+    "hors_perimetre"
+   ],
+   "description": "reponse si une requête répond à la question."
+  },
+  "sql": {
+   "type": "string",
+   "description": "La requête finale. Chaîne vide si statut n'est pas reponse."
+  },
+  "ambiguite": {
+   "type": "boolean",
+   "description": "true si la question admet plusieurs lectures qui changent la réponse."
+  },
+  "interpretation": {
+   "type": "string",
+   "description": "La lecture retenue si ambiguite est true, sinon chaîne vide."
+  },
+  "reponse": {
+   "type": "string",
+   "description": "Le texte destiné à l'utilisateur."
+  }
+ },
+ "required": [
+  "statut",
+  "sql",
+  "ambiguite",
+  "interpretation",
+  "reponse"
+ ],
+ "additionalProperties": false
+}
+
+# Format de sortie
+
+Les questions ci-dessous sont indépendantes : traite chacune comme si elle
+était seule, sans t'appuyer sur les autres. Pour chacune, écris exactement
+les champs que tu passerais à l'outil repondre, en une ligne JSON :
+
+{"id": "...", "statut": "...", "sql": "...", "ambiguite": false, "interpretation": "...", "reponse": "..."}
+
+Une ligne par question, dans l'ordre, rien d'autre.
+
+# Questions
+
+qbfc5dc : Combien de buts la France a-t-elle marqués ?
+q314c85 : Quelle équipe compte le plus de buteurs différents ?
+qb1e97d : Combien de passes Luka Modric a-t-il réussies ?
+q233f25 : Quelle est la durée moyenne d'une possession en secondes, hors séances de tirs au but ?
+qbc30e1 : Quel est l'âge moyen des buteurs du tournoi ?
+q1e1290 : Combien de spectateurs ont assisté à la finale ?
+qe3bf6d : Combien de remplacements ont été effectués au total ?
+q8746ad : Quelle équipe a tiré le plus de corners ?
+qefbc18 : Quelle équipe atteint le dernier tiers adverse sur la plus grande proportion de ses possessions ?
+q46f7a4 : Combien de fautes l'Uruguay a-t-il commises ?
+qee754a : Combien de buts contre son camp ont été inscrits ?
+q498a90 : Combien de joueurs différents ont marqué au moins un but ?
+q713e71 : Quel est le taux de passes réussies de l'Espagne ?
+q8d0402 : Quel arbitre a dirigé le plus de matchs ?
+q6b3d1e : Combien de centres l'Angleterre a-t-elle tentés ?
+q22854f : Dans quel club jouait Harry Kane pendant la Coupe du monde ?
+q38e5c6 : Combien de cartons jaunes ont été distribués ?
+qff14f4 : Dans quel stade la finale s'est-elle jouée ?
+q03305b : Quelle équipe a tenté le plus de tirs hors de la surface ?
+q1bccc5 : Combien de matchs se sont terminés sur un match nul ?
+q9661c4 : Combien de matchs ont été disputés pendant la Coupe du monde 2018 ?
+q31e6bf : Quelles équipes ont remporté une séance de tirs au but, et combien chacune ?
+qd694af : Qui a été le meilleur passeur du tournoi ?
+qd83ede : Combien de passes décisives Eden Hazard a-t-il délivrées ?
+q15b114 : Combien de tirs la Croatie a-t-elle tentés ?
+q3831a6 : Qui a marqué le but le plus rapide du tournoi, compté depuis le coup d'envoi ?
+q7103d4 : Quelle équipe a eu le plus la possession du ballon ?
+q44881c : Quelle équipe a cumulé le plus d'expected goals (xG) ?
+q13b18d : Quel pourcentage des tirs de la France étaient cadrés ?
+qdf4989 : Quel joueur a réussi le plus de dribbles ?
+qd0a30b : Combien de tirs ont été tentés lors de la finale ?
+q5c9029 : Quel match a été le plus riche en buts ?
+q2c1e13 : Combien de penalties ont été transformés en cours de match ?
+q63a86d : Combien de buts ont été marqués dans le temps additionnel de la seconde période ?
+
